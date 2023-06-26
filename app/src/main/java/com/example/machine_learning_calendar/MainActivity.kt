@@ -20,10 +20,12 @@ class MainActivity : AppCompatActivity() {
 
         // Set an OnDateChangeListener to the CalendarView
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-            // Display a toast message with the selected date
-            // Note: The month value is 0-based in Java and Kotlin, so we add 1 to it
-            Toast.makeText(this, "Selected date is $dayOfMonth/${month + 1}/$year", Toast.LENGTH_SHORT).show()
-        }
+            val intent = Intent(this, DayEventsActivity::class.java).apply {
+                putExtra("year", year)
+                putExtra("month", month)
+                putExtra("day", dayOfMonth)
+            }
+            startActivity(intent)}
     }
 
     private fun addEvent(title: String, location: String, begin: Calendar, end: Calendar) {
