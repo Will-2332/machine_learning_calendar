@@ -1,18 +1,54 @@
 package com.example.machine_learning_calendar
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.icu.util.Calendar
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
-import android.widget.DatePicker
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.TimePicker
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import java.util.Date
+
+data class Event(val title: String, val start: Long, val end: Long)
+
+class EventsAdapter(private val events: List<Event>) : RecyclerView.Adapter<EventsAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val title: TextView = view.findViewById(R.id.title)
+        val start: TextView = view.findViewById(R.id.start)
+        val end: TextView = view.findViewById(R.id.end)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.list_item_event, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val event = events[position]
+        holder.title.text = event.title
+        holder.start.text = Date(event.start).toString() // Convert the start time to a Date and then to a String
+        holder.end.text = Date(event.end).toString() // Convert the end time to a Date and then to a String
+    }
+
+    override fun getItemCount() = events.size
+}
 
 class DayEventsActivity : AppCompatActivity() {
+
+    private val events = mutableListOf<Event>()
+    private lateinit var eventsList: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,7 +58,11 @@ class DayEventsActivity : AppCompatActivity() {
         val month = intent.getIntExtra("month", 0)
         val day = intent.getIntExtra("day", 0)
 
-        // TODO: Fetch and display the events for this day
+        eventsList = findViewById<RecyclerView>(R.id.events_list)
+        eventsList.layoutManager = LinearLayoutManager(this)
+        eventsList.adapter = EventsAdapter(events)
+
+        fetchEvents(year, month, day) // Fetch the events
 
         findViewById<Button>(R.id.add_event_button).setOnClickListener {
             showAddEventDialog(year, month, day)
@@ -46,7 +86,7 @@ class DayEventsActivity : AppCompatActivity() {
             val end = begin.clone() as Calendar
             end.add(Calendar.HOUR, 1) // For example, set the event's duration to 1 hour
 
-            addEvent(title, location, begin, end)
+            addEventToCalendar(title, location, begin, end)
             alertDialog.dismiss()
         }
 
@@ -56,15 +96,51 @@ class DayEventsActivity : AppCompatActivity() {
 
         alertDialog.show()
     }
-    private fun addEvent(title: String, location: String, begin: Calendar, end: Calendar) {
-        val intent = Intent(Intent.ACTION_INSERT)
-            .setData(CalendarContract.Events.CONTENT_URI)
-            .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin.timeInMillis)
-            .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end.timeInMillis)
-            .putExtra(CalendarContract.Events.TITLE, title)
-            .putExtra(CalendarContract.Events.DESCRIPTION, "Event Description")
-            .putExtra(CalendarContract.Events.EVENT_LOCATION, location)
-            .putExtra(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_BUSY)
+
+    private fun addEventToCalendar(title: String, location: String, begin: Calendar, end: Calendar) {
+        val intent = Intent(Intent.ACTION_EDIT).apply {
+            type = "vnd.android.cursor.item/event"
+            putExtra("beginTime", begin.timeInMillis)
+            putExtra("allDay", true)
+            putExtra("rrule", "FREQ=YEARLY")
+            putExtra("endTime", end.timeInMillis + 60 * 60 * 1000)
+            putExtra("title", title)
+        }
         startActivity(intent)
-}
+    }
+
+    private fun fetchEvents(year: Int, month: Int, day: Int) {
+        val beginTime = Calendar.getInstance().apply {
+            set(year, month, day, 0, 0)
+            add(Calendar.DAY_OF_YEAR, -7) // Start from one week before the specified day
+        }
+        val endTime = beginTime.clone() as Calendar
+        endTime.add(Calendar.DAY_OF_YEAR, 15) // End one week after the specified day
+
+        val projection = arrayOf(
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND
+        )
+        val selection = "(${CalendarContract.Events.DTSTART} >= ?) AND (${CalendarContract.Events.DTEND} < ?)"
+        val selectionArgs = arrayOf(beginTime.timeInMillis.toString(), endTime.timeInMillis.toString())
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            // Request the permission
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_CALENDAR), 0)
+            return
+        }
+
+        val cursor = contentResolver.query(CalendarContract.Events.CONTENT_URI, projection, selection, selectionArgs, null)
+        cursor?.use {
+            while (it.moveToNext()) {
+                val title = it.getString(0)
+                val start = it.getLong(1)
+                val end = it.getLong(2)
+
+                events.add(Event(title, start, end))
+            }
+        }
+        (eventsList.adapter as EventsAdapter).notifyDataSetChanged()
+    }
 }
