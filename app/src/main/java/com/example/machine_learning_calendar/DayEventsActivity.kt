@@ -19,6 +19,8 @@ import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.Date
+import com.example.machine_learning_calendar.R
+
 
 data class Event(val title: String, val start: Long, val end: Long)
 
