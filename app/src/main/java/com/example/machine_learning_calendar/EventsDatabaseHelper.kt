@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
 
 data class Event(val id: Int, val date: String, val title: String, val location: String, val startTime: String, val endTime: String, val suggestion: String, val grade: Int) {
     companion object {
@@ -37,6 +38,7 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
                 "${Event.COLUMN_SUGGESTION} BINARY," +
                 "${Event.COLUMN_GRADE} INTEGER)"
         db.execSQL(CREATE_EVENTS_TABLE)
+        Log.d("EventsDatabaseHelper", "Creating database : ${Event.TABLE_NAME}")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -48,7 +50,7 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
         val date = "$year-${month+1}-$day" // Construct the date string in the format "YYYY-MM-DD"
         val db = this.readableDatabase
         val cursor = db.rawQuery("SELECT * FROM ${Event.TABLE_NAME} WHERE ${Event.COLUMN_DATE} = ?", arrayOf(date))
-
+        Log.d("EventsDatabaseHelper", "Getting events for day: $year-$month-$day")
         val events = mutableListOf<Event>()
         cursor.use {
             while (it.moveToNext()) {
@@ -76,6 +78,7 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
             put(Event.COLUMN_SUGGESTION, event.suggestion)
             put(Event.COLUMN_GRADE, event.grade)
         }
+        Log.d("EventsDatabaseHelper", "Creating event: $event") // Add this line
         db.insert(Event.TABLE_NAME, null, values)
     }
 }
