@@ -61,7 +61,11 @@ class AddEventActivity : AppCompatActivity() {
     }
 
     private fun createEvent(title: String, location: String, startTime: String, endTime: String) {
+        val year = intent.getIntExtra("year", 0)
+        val month = intent.getIntExtra("month", 0)
+        val day = intent.getIntExtra("day", 0)
         val date = "$year-${month+1}-$day" // Construct the date string in the format "YYYY-MM-DD"
+
         val event = Event(0, date, title, location, startTime, endTime, "", 0)
         Log.d("AddEventActivity", "Creating event: $event")
         dbHelper.createEvent(event)

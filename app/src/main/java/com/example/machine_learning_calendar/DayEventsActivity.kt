@@ -33,6 +33,9 @@ class DayEventsActivity : AppCompatActivity() {
         val addEventButton = findViewById<Button>(R.id.add_event_button)
         addEventButton.setOnClickListener {
             val intent = Intent(this, AddEventActivity::class.java)
+            intent.putExtra("year", year)
+            intent.putExtra("month", month)
+            intent.putExtra("day", day)
             startActivity(intent)
         }
     }
