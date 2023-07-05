@@ -81,4 +81,44 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
         Log.d("EventsDatabaseHelper", "Creating event: $event") // Add this line
         db.insert(Event.TABLE_NAME, null, values)
     }
+
+    fun updateEvent(event: Event) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put(Event.COLUMN_DATE, event.date)
+            put(Event.COLUMN_TITLE, event.title)
+            put(Event.COLUMN_LOCATION, event.location)
+            put(Event.COLUMN_START_TIME, event.startTime)
+            put(Event.COLUMN_END_TIME, event.endTime)
+            put(Event.COLUMN_SUGGESTION, event.suggestion)
+            put(Event.COLUMN_GRADE, event.grade)
+        }
+        Log.d("EventsDatabaseHelper", "Updating event: $event") // Add this line
+        db.update(Event.TABLE_NAME, values, "${Event.COLUMN_ID} = ?", arrayOf(event.id.toString()))
+    }
+
+    fun deleteEvent(event: Event) {
+        val db = this.writableDatabase
+        Log.d("EventsDatabaseHelper", "Deleting event: $event") // Add this line
+        db.delete(Event.TABLE_NAME, "${Event.COLUMN_ID} = ?", arrayOf(event.id.toString()))
+    }
+
+    fun getEventById(id: Int): Event? {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM ${Event.TABLE_NAME} WHERE ${Event.COLUMN_ID} = ?", arrayOf(id.toString()))
+        Log.d("EventsDatabaseHelper", "Getting events for Id: $id")
+        return if (cursor.moveToFirst()) {
+            val date = cursor.getString(cursor.getColumnIndex(Event.COLUMN_DATE))
+            val title = cursor.getString(cursor.getColumnIndex(Event.COLUMN_TITLE))
+            val location = cursor.getString(cursor.getColumnIndex(Event.COLUMN_LOCATION))
+            val startTime = cursor.getString(cursor.getColumnIndex(Event.COLUMN_START_TIME))
+            val endTime = cursor.getString(cursor.getColumnIndex(Event.COLUMN_END_TIME))
+            val suggestion = cursor.getString(cursor.getColumnIndex(Event.COLUMN_SUGGESTION))
+            val grade = cursor.getInt(cursor.getColumnIndex(Event.COLUMN_GRADE))
+            Event(id, date, title, location, startTime, endTime, suggestion, grade)
+        } else {
+            null
+        }
+    }
+
 }

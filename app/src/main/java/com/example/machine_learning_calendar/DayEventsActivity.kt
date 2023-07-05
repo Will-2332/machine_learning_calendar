@@ -36,6 +36,7 @@ class DayEventsActivity : AppCompatActivity() {
             intent.putExtra("year", year)
             intent.putExtra("month", month)
             intent.putExtra("day", day)
+            Log.d("DayEventsActivity", "Creating an event at : $year-$month-$day")
             startActivity(intent)
         }
     }
@@ -84,6 +85,13 @@ class EventsAdapter(private val events: List<Event>) : RecyclerView.Adapter<Even
         holder.location.text = event.location
         holder.startTime.text = event.startTime
         holder.endTime.text = event.endTime
+
+        holder.itemView.setOnClickListener {
+            val intent = Intent(holder.itemView.context, EditEventActivity::class.java)
+            intent.putExtra("eventId", event.id) // Pass the id of the event as an extra
+            Log.d("DayEventsActivity", "Editing event Id : ${event.id}")
+            holder.itemView.context.startActivity(intent)
+        }
     }
 
     override fun getItemCount() = events.size
