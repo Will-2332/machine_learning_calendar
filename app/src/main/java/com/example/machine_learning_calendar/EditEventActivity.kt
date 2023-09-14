@@ -22,7 +22,7 @@ class EditEventActivity : AppCompatActivity() {
         // Get the eventId from the intent extras and retrieve the event from the database
         val eventId = intent.getIntExtra("eventId", 0)
         event = dbHelper.getEventById(eventId) ?: return finish() // Close the activity if the event is null
-
+        title = "Editing " + event.title
         Log.d("EditEventActivity", "Editing event: $event")
 
         val titleInput = findViewById<EditText>(R.id.title_edit_text)

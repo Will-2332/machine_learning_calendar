@@ -5,8 +5,9 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import java.time.LocalDate
 
-data class Event(val id: Int, val date: String, val title: String, val location: String, val startTime: String, val endTime: String, val suggestion: String, val grade: Int) {
+data class Event(val id: Int, val date: String, val title: String, val location: String, val startTime: String, val endTime: String, val suggestion: String, var grade: Int) {
     companion object {
         const val TABLE_NAME = "events"
         const val COLUMN_ID = "id"
@@ -119,6 +120,39 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
         } else {
             null
         }
+
+    }
+
+    fun updateEventGrade(eventId: Int, newGrade: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put(Event.COLUMN_GRADE, newGrade)
+        }
+        Log.d("EventsDatabaseHelper", "Updating grade for event Id: $eventId to $newGrade")
+        db.update(Event.TABLE_NAME, values, "${Event.COLUMN_ID} = ?", arrayOf(eventId.toString()))
+    }
+
+
+    fun getEventsForDataExtractor(): List<Event> {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM ${Event.TABLE_NAME}", null)
+        Log.d("EventsDatabaseHelper", "Getting all events")
+
+        val events = mutableListOf<Event>()
+        cursor.use {
+            while (it.moveToNext()) {
+                val id = it.getInt(it.getColumnIndex(Event.COLUMN_ID))
+                val date = it.getString(it.getColumnIndex(Event.COLUMN_DATE))
+                val title = it.getString(it.getColumnIndex(Event.COLUMN_TITLE))
+                val location = it.getString(it.getColumnIndex(Event.COLUMN_LOCATION))
+                val startTime = it.getString(it.getColumnIndex(Event.COLUMN_START_TIME))
+                val endTime = it.getString(it.getColumnIndex(Event.COLUMN_END_TIME))
+                val suggestion = it.getString(it.getColumnIndex(Event.COLUMN_SUGGESTION))
+                val grade = it.getInt(it.getColumnIndex(Event.COLUMN_GRADE))
+                events.add(Event(id, date, title, location, startTime, endTime, suggestion, grade))
+            }
+        }
+        return events
     }
 
 }

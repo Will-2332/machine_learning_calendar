@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.util.Log
+import android.widget.RatingBar
 
 class DayEventsActivity : AppCompatActivity() {
 
@@ -29,6 +30,10 @@ class DayEventsActivity : AppCompatActivity() {
         year = intent.getIntExtra("year", 0)
         month = intent.getIntExtra("month", 0)
         day = intent.getIntExtra("day", 0)
+
+        // Set the title of the activity to the selected date
+        val date = "$year-${month+1}-$day"
+        title = date
 
         val addEventButton = findViewById<Button>(R.id.add_event_button)
         addEventButton.setOnClickListener {
@@ -54,7 +59,7 @@ class DayEventsActivity : AppCompatActivity() {
 
         // Set the layout manager and adapter for the RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = EventsAdapter(events)
+        recyclerView.adapter = EventsAdapter(events, dbHelper)
     }
 
 
@@ -65,13 +70,14 @@ class DayEventsActivity : AppCompatActivity() {
     }
 
 // Define the EventsAdapter class here
-class EventsAdapter(private val events: List<Event>) : RecyclerView.Adapter<EventsAdapter.ViewHolder>() {
+class EventsAdapter(private val events: List<Event>, private val dbHelper: EventsDatabaseHelper) : RecyclerView.Adapter<EventsAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val title: TextView = view.findViewById(R.id.title)
         val location: TextView = view.findViewById(R.id.location)
         val startTime: TextView = view.findViewById(R.id.start_time)
         val endTime: TextView = view.findViewById(R.id.end_time)
+        val ratingBar: RatingBar = view.findViewById(R.id.ratingBar)  // New UI element for grading
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -86,6 +92,20 @@ class EventsAdapter(private val events: List<Event>) : RecyclerView.Adapter<Even
         holder.startTime.text = event.startTime
         holder.endTime.text = event.endTime
 
+        if (event.suggestion == "1") {
+            holder.ratingBar.visibility = View.VISIBLE
+            holder.ratingBar.rating = event.grade.toFloat()
+
+            holder.ratingBar.setOnRatingBarChangeListener { _, rating, _ ->
+                val newGrade = rating.toInt()
+                event.grade = newGrade
+                dbHelper.updateEventGrade(event.id, newGrade)  // Assuming dbHelper is accessible here
+            }
+        } else {
+            holder.ratingBar.visibility = View.GONE
+        }
+
+        // Keep your existing click listener
         holder.itemView.setOnClickListener {
             val intent = Intent(holder.itemView.context, EditEventActivity::class.java)
             intent.putExtra("eventId", event.id) // Pass the id of the event as an extra
@@ -93,6 +113,7 @@ class EventsAdapter(private val events: List<Event>) : RecyclerView.Adapter<Even
             holder.itemView.context.startActivity(intent)
         }
     }
+
 
     override fun getItemCount() = events.size
 }
