@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import java.time.LocalDate
 
-data class Event(val id: Int, val date: String, val title: String, val location: String, val startTime: String, val endTime: String, val suggestion: String, var grade: Int) {
+data class Event(val id: Int, val date: String, val title: String, val location: String, val startTime: String, val endTime: String, val suggestion: String, var grade: Int, var endNextDay: Boolean) {
     companion object {
         const val TABLE_NAME = "events"
         const val COLUMN_ID = "id"
@@ -18,6 +18,7 @@ data class Event(val id: Int, val date: String, val title: String, val location:
         const val COLUMN_END_TIME = "end_time"
         const val COLUMN_SUGGESTION = "suggestion"
         const val COLUMN_GRADE = "grade"
+        const val COLUMN_END_NEXT_DAY = "end_next_day"
     }
 }
 
@@ -37,7 +38,8 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
                 "${Event.COLUMN_START_TIME} TIME," +
                 "${Event.COLUMN_END_TIME} TIME," +
                 "${Event.COLUMN_SUGGESTION} BINARY," +
-                "${Event.COLUMN_GRADE} INTEGER)"
+                "${Event.COLUMN_GRADE} INTEGER,"+
+                "${Event.COLUMN_END_NEXT_DAY} INTEGER)"
         db.execSQL(CREATE_EVENTS_TABLE)
         Log.d("EventsDatabaseHelper", "Creating database : ${Event.TABLE_NAME}")
     }
@@ -45,6 +47,7 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DROP TABLE IF EXISTS ${Event.TABLE_NAME}")
         onCreate(db)
+        Log.d("EventsDatabaseHelper", "Database upgraded from version $oldVersion to $newVersion")
     }
 
     fun getEventsForDay(year: Int, month: Int, day: Int): List<Event> {
@@ -62,9 +65,11 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
                 val endTime = it.getString(it.getColumnIndex(Event.COLUMN_END_TIME))
                 val suggestion = it.getString(it.getColumnIndex(Event.COLUMN_SUGGESTION))
                 val grade = it.getInt(it.getColumnIndex(Event.COLUMN_GRADE))
-                events.add(Event(id, date, title, location, startTime, endTime, suggestion, grade))
+                val endNextDay = it.getInt(it.getColumnIndex(Event.COLUMN_END_NEXT_DAY)) == 1
+                events.add(Event(id, date, title, location, startTime, endTime, suggestion, grade, endNextDay))
             }
         }
+        Log.d("EventsDatabaseHelper", "Fetched ${events.size} events for the day")
         return events
     }
 
@@ -78,9 +83,11 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
             put(Event.COLUMN_END_TIME, event.endTime)
             put(Event.COLUMN_SUGGESTION, event.suggestion)
             put(Event.COLUMN_GRADE, event.grade)
+            put(Event.COLUMN_END_NEXT_DAY, if (event.endNextDay) 1 else 0)
         }
         Log.d("EventsDatabaseHelper", "Creating event: $event") // Add this line
         db.insert(Event.TABLE_NAME, null, values)
+        Log.d("EventsDatabaseHelper", "Event created successfully")
     }
 
     fun updateEvent(event: Event) {
@@ -93,22 +100,33 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
             put(Event.COLUMN_END_TIME, event.endTime)
             put(Event.COLUMN_SUGGESTION, event.suggestion)
             put(Event.COLUMN_GRADE, event.grade)
+            put(Event.COLUMN_END_NEXT_DAY, if (event.endNextDay) 1 else 0)
         }
         Log.d("EventsDatabaseHelper", "Updating event: $event") // Add this line
         db.update(Event.TABLE_NAME, values, "${Event.COLUMN_ID} = ?", arrayOf(event.id.toString()))
+        Log.d("EventsDatabaseHelper", "Event updated successfully")
+
     }
 
     fun deleteEvent(event: Event) {
         val db = this.writableDatabase
         Log.d("EventsDatabaseHelper", "Deleting event: $event") // Add this line
         db.delete(Event.TABLE_NAME, "${Event.COLUMN_ID} = ?", arrayOf(event.id.toString()))
+        Log.d("EventsDatabaseHelper", "Event deleted successfully")
     }
 
     fun getEventById(id: Int): Event? {
         val db = this.readableDatabase
         val cursor = db.rawQuery("SELECT * FROM ${Event.TABLE_NAME} WHERE ${Event.COLUMN_ID} = ?", arrayOf(id.toString()))
-        Log.d("EventsDatabaseHelper", "Getting events for Id: $id")
-        return if (cursor.moveToFirst()) {
+        Log.d("EventsDatabaseHelper", "Query executed, checking for results.")
+
+        if (cursor.count == 0) {
+            Log.d("EventsDatabaseHelper", "No records found for ID: $id")
+            return null
+        }
+
+        if (cursor.moveToFirst()) {
+            Log.d("EventsDatabaseHelper", "Record found, extracting data.")
             val date = cursor.getString(cursor.getColumnIndex(Event.COLUMN_DATE))
             val title = cursor.getString(cursor.getColumnIndex(Event.COLUMN_TITLE))
             val location = cursor.getString(cursor.getColumnIndex(Event.COLUMN_LOCATION))
@@ -116,11 +134,13 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
             val endTime = cursor.getString(cursor.getColumnIndex(Event.COLUMN_END_TIME))
             val suggestion = cursor.getString(cursor.getColumnIndex(Event.COLUMN_SUGGESTION))
             val grade = cursor.getInt(cursor.getColumnIndex(Event.COLUMN_GRADE))
-            Event(id, date, title, location, startTime, endTime, suggestion, grade)
+            val endNextDay = cursor.getInt(cursor.getColumnIndex(Event.COLUMN_END_NEXT_DAY)) == 1
+            Log.d("EventsDatabaseHelper", "Data extracted, creating Event object.")
+            return Event(id, date, title, location, startTime, endTime, suggestion, grade, endNextDay)
         } else {
-            null
+            Log.d("EventsDatabaseHelper", "Cursor couldn't move to the first row.")
+            return null
         }
-
     }
 
     fun updateEventGrade(eventId: Int, newGrade: Int) {
@@ -130,6 +150,7 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
         }
         Log.d("EventsDatabaseHelper", "Updating grade for event Id: $eventId to $newGrade")
         db.update(Event.TABLE_NAME, values, "${Event.COLUMN_ID} = ?", arrayOf(eventId.toString()))
+        Log.d("EventsDatabaseHelper", "Event grade updated successfully")
     }
 
 
@@ -149,9 +170,12 @@ class EventsDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
                 val endTime = it.getString(it.getColumnIndex(Event.COLUMN_END_TIME))
                 val suggestion = it.getString(it.getColumnIndex(Event.COLUMN_SUGGESTION))
                 val grade = it.getInt(it.getColumnIndex(Event.COLUMN_GRADE))
-                events.add(Event(id, date, title, location, startTime, endTime, suggestion, grade))
+                val endNextDay = it.getInt(it.getColumnIndex(Event.COLUMN_END_NEXT_DAY)) == 1
+                events.add(Event(id, date, title, location, startTime, endTime, suggestion, grade, endNextDay))
+
             }
         }
+        Log.d("EventsDatabaseHelper", "Fetched all events for data extraction")
         return events
     }
 

@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.widget.TimePicker
 import android.util.Log
 
-
 class AddEventActivity : AppCompatActivity() {
     private lateinit var dbHelper: EventsDatabaseHelper
     private var year = 0
@@ -21,6 +20,8 @@ class AddEventActivity : AppCompatActivity() {
         setContentView(R.layout.activity_add_event)
         title = "Add Event"
 
+        Log.d("AddEventActivity", "Activity started")
+
         dbHelper = EventsDatabaseHelper(this)
 
         // Get the date information from the intent extras
@@ -28,6 +29,7 @@ class AddEventActivity : AppCompatActivity() {
         month = intent.getIntExtra("month", 0)
         day = intent.getIntExtra("day", 0)
 
+        Log.d("AddEventActivity", "Received date: $year-$month-$day")
 
         val titleInput = findViewById<EditText>(R.id.title_edit_text)
         val locationInput = findViewById<EditText>(R.id.location_edit_text)
@@ -48,7 +50,11 @@ class AddEventActivity : AppCompatActivity() {
             val endMinute = endTimePicker.minute
             val endTime = "$endHour:$endMinute"
 
-            createEvent(title, location, startTime, endTime)
+            val endNextDay = endHour < startHour || (endHour == startHour && endMinute <= startMinute)
+
+            Log.d("AddEventActivity", "Collected event details: Title=$title, Location=$location, StartTime=$startTime, EndTime=$endTime, EndNextDay=$endNextDay")
+
+            createEvent(title, location, startTime, endTime, endNextDay)
 
             // Close the activity and go back to the previous screen
             finish()
@@ -56,18 +62,15 @@ class AddEventActivity : AppCompatActivity() {
 
         val cancelButton = findViewById<Button>(R.id.cancel_button)
         cancelButton.setOnClickListener {
+            Log.d("AddEventActivity", "Cancel button clicked")
             // Close the activity and go back to the previous screen without saving anything
             finish()
         }
     }
 
-    private fun createEvent(title: String, location: String, startTime: String, endTime: String) {
-        val year = intent.getIntExtra("year", 0)
-        val month = intent.getIntExtra("month", 0)
-        val day = intent.getIntExtra("day", 0)
+    private fun createEvent(title: String, location: String, startTime: String, endTime: String, endNextDay: Boolean) {
         val date = "$year-${month+1}-$day" // Construct the date string in the format "YYYY-MM-DD"
-
-        val event = Event(0, date, title, location, startTime, endTime, "0", 0)
+        val event = Event(0, date, title, location, startTime, endTime, "0", 0, endNextDay) // Assuming Event class has endNextDay field
         Log.d("AddEventActivity", "Creating event: $event")
         dbHelper.createEvent(event)
     }

@@ -23,6 +23,7 @@ class DayEventsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_day_events)
+        Log.d("DayEventsActivity", "onCreate called.")
 
         dbHelper = EventsDatabaseHelper(this)
 
@@ -46,9 +47,9 @@ class DayEventsActivity : AppCompatActivity() {
         }
     }
 
-
     override fun onResume() {
         super.onResume()
+        Log.d("DayEventsActivity", "onResume called.")
 
         // Use the date information to display events for the selected day
         val events = dbHelper.getEventsForDay(year, month, day)
@@ -60,61 +61,57 @@ class DayEventsActivity : AppCompatActivity() {
         // Set the layout manager and adapter for the RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = EventsAdapter(events, dbHelper)
+        Log.d("DayEventsActivity", "RecyclerView adapter set.")
     }
 
+    // Define the EventsAdapter class here
+    class EventsAdapter(private val events: List<Event>, private val dbHelper: EventsDatabaseHelper) : RecyclerView.Adapter<EventsAdapter.ViewHolder>() {
 
-    private fun createEvent(title: String, location: String, startTime: String, endTime: String) {
-        val date = "$year-${month+1}-$day" // Construct the date string in the format "YYYY-MM-DD"
-        val event = Event(0, date, title, location, startTime, endTime, "", 0)
-        dbHelper.createEvent(event)
-    }
+        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val title: TextView = view.findViewById(R.id.title)
+            val location: TextView = view.findViewById(R.id.location)
+            val startTime: TextView = view.findViewById(R.id.start_time)
+            val endTime: TextView = view.findViewById(R.id.end_time)
+            val ratingBar: RatingBar = view.findViewById(R.id.ratingBar)  // New UI element for grading
+        }
 
-// Define the EventsAdapter class here
-class EventsAdapter(private val events: List<Event>, private val dbHelper: EventsDatabaseHelper) : RecyclerView.Adapter<EventsAdapter.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.event_item, parent, false)
+            return ViewHolder(view)
+        }
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val title: TextView = view.findViewById(R.id.title)
-        val location: TextView = view.findViewById(R.id.location)
-        val startTime: TextView = view.findViewById(R.id.start_time)
-        val endTime: TextView = view.findViewById(R.id.end_time)
-        val ratingBar: RatingBar = view.findViewById(R.id.ratingBar)  // New UI element for grading
-    }
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val event = events[position]
+            Log.d("EventsAdapter", "Binding event: ${event.title}")
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.event_item, parent, false)
-        return ViewHolder(view)
-    }
+            holder.title.text = event.title
+            holder.location.text = event.location
+            holder.startTime.text = event.startTime
+            holder.endTime.text = event.endTime
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val event = events[position]
-        holder.title.text = event.title
-        holder.location.text = event.location
-        holder.startTime.text = event.startTime
-        holder.endTime.text = event.endTime
+            if (event.suggestion == "1") {
+                holder.ratingBar.visibility = View.VISIBLE
+                holder.ratingBar.rating = event.grade.toFloat()
 
-        if (event.suggestion == "1") {
-            holder.ratingBar.visibility = View.VISIBLE
-            holder.ratingBar.rating = event.grade.toFloat()
-
-            holder.ratingBar.setOnRatingBarChangeListener { _, rating, _ ->
-                val newGrade = rating.toInt()
-                event.grade = newGrade
-                dbHelper.updateEventGrade(event.id, newGrade)  // Assuming dbHelper is accessible here
+                holder.ratingBar.setOnRatingBarChangeListener { _, rating, _ ->
+                    val newGrade = rating.toInt()
+                    event.grade = newGrade
+                    dbHelper.updateEventGrade(event.id, newGrade)
+                    Log.d("EventsAdapter", "Updated grade for event: ${event.title} to $newGrade")
+                }
+            } else {
+                holder.ratingBar.visibility = View.GONE
             }
-        } else {
-            holder.ratingBar.visibility = View.GONE
+
+            // Keep your existing click listener
+            holder.itemView.setOnClickListener {
+                val intent = Intent(holder.itemView.context, EditEventActivity::class.java)
+                intent.putExtra("eventId", event.id)
+                Log.d("EventsAdapter", "Clicked on event: ${event.title}, launching EditEventActivity.")
+                holder.itemView.context.startActivity(intent)
+            }
         }
 
-        // Keep your existing click listener
-        holder.itemView.setOnClickListener {
-            val intent = Intent(holder.itemView.context, EditEventActivity::class.java)
-            intent.putExtra("eventId", event.id) // Pass the id of the event as an extra
-            Log.d("DayEventsActivity", "Editing event Id : ${event.id}")
-            holder.itemView.context.startActivity(intent)
-        }
+        override fun getItemCount() = events.size
     }
-
-
-    override fun getItemCount() = events.size
-}
 }

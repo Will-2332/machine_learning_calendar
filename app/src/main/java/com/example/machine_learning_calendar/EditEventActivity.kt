@@ -16,6 +16,7 @@ class EditEventActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_event)
+        Log.d("EditEventActivity", "onCreate called.")
 
         dbHelper = EventsDatabaseHelper(this)
 
@@ -58,7 +59,8 @@ class EditEventActivity : AppCompatActivity() {
             val endTime = "$endHour:$endMinute"
 
             // Create a new Event object with the updated properties
-            val updatedEvent = Event(event.id, event.date, title, location, startTime, endTime, event.suggestion, event.grade)
+            val updatedEvent = Event(event.id, event.date, title, location, startTime, endTime, event.suggestion, event.grade, event.endNextDay)
+            Log.d("EditEventActivity", "Updating event: $updatedEvent")
             updateEvent(updatedEvent)
 
             // Close the activity and go back to the previous screen
@@ -67,6 +69,7 @@ class EditEventActivity : AppCompatActivity() {
 
         val deleteButton = findViewById<Button>(R.id.delete_button)
         deleteButton.setOnClickListener {
+            Log.d("EditEventActivity", "Deleting event: $event")
             deleteEvent()
 
             // Close the activity and go back to the previous screen
@@ -75,14 +78,12 @@ class EditEventActivity : AppCompatActivity() {
     }
 
     private fun updateEvent(updatedEvent: Event) {
-        // Update the event in the database
-        Log.d("EditEventActivity", "Updating event: $updatedEvent")
+        Log.d("EditEventActivity", "Updating event in database: $updatedEvent")
         dbHelper.updateEvent(updatedEvent)
     }
 
     private fun deleteEvent() {
-        // Delete the event from the database
-        Log.d("EditEventActivity", "Deleting event: $event")
+        Log.d("EditEventActivity", "Deleting event from database: $event")
         dbHelper.deleteEvent(event)
     }
 }
